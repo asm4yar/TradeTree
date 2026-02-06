@@ -4,6 +4,8 @@ from sqlalchemy import select
 from app.models import Category, Product, Customer, Order, OrderItem
 import random
 
+COUNT_SEED_PRODUCTS = 200_000
+
 
 def create_categories(db: Session, items, parent_id=None, leaf_ids=None):
     if leaf_ids is None:
@@ -84,7 +86,7 @@ def run():
             db.flush()
 
             all_products = []
-            for i in range(200000):
+            for i in range(COUNT_SEED_PRODUCTS):
                 cat_id = random.choice(leaf_cats)
                 price = random.randint(10_000, 120_000)
                 stock = random.randint(10, 100)
