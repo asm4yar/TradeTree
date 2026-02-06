@@ -10,6 +10,7 @@ from sqlalchemy import (
     DateTime,
     func,
     Index,
+    DECIMAL,
 )
 
 
@@ -33,6 +34,8 @@ class Category(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
+    __table_args__ = (Index("ix_categories_parent_id", parent_id),)
+
 
 class Product(Base):
     """Товар, принадлежащий категории и имеющий складской остаток."""
@@ -45,7 +48,7 @@ class Product(Base):
         BigInteger, ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False
     )
     stock_qty: Mapped[int] = mapped_column(Integer, nullable=False)
-    price: Mapped[int] = mapped_column(Numeric(12, 2), nullable=False)
+    price: Mapped[DECIMAL] = mapped_column(Numeric(12, 2), nullable=False)
     created_at: Mapped[object] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -79,7 +82,11 @@ class Order(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    __table_args__ = (Index("ix_orders_create_at", created_at),)
+    __table_args__ = (
+        Index("ix_orders_customer_id", customer_id),
+        Index("ix_orders_created_at", created_at),
+        Index("ix_orders_status", status),
+    )
 
 
 class OrderItem(Base):
@@ -93,12 +100,12 @@ class OrderItem(Base):
         BigInteger, ForeignKey("products.id", ondelete="RESTRICT"), primary_key=True
     )
     qty: Mapped[int] = mapped_column(Integer, nullable=False)
-    unit_price: Mapped[object] = mapped_column(Numeric(12, 2), nullable=False)
+    unit_price: Mapped[DECIMAL] = mapped_column(Numeric(12, 2), nullable=False)
     created_at: Mapped[object] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
     updated_at: Mapped[object] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    __table_args__ = (Index("ix_orders_items_order_id", order_id),)
+    __table_args__ = (Index("ix_order_items_product_id", product_id),)

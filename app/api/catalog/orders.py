@@ -1,5 +1,6 @@
 """Эндпоинты для работы с заказами и их агрегатной аналитикой."""
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from app.api.catalog.schemas import AddItemRequest, AddItemResponse, clientStatistics
 from app.db import get_db
@@ -7,6 +8,8 @@ from app.models import Order, Product, OrderItem
 from sqlalchemy.orm import Session
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/orders", tags=["Catalog / Orders"])
 
@@ -48,7 +51,7 @@ def client_statistics(db: Session = Depends(get_db)):
 
 
 @router.post("/{order_id}/items", response_model=AddItemResponse)
-def add_item_to_order(
+async def add_item_to_order(
     order_id: int, payload: AddItemRequest, db: Session = Depends(get_db)
 ):
     """Добавляет товар в заказ и списывает остаток на складе.
@@ -65,15 +68,18 @@ def add_item_to_order(
     Returns:
         AddItemResponse: Обновлённое количество позиции в заказе и текущий остаток.
     """
-
-    order_exists = db.execute(
-        select(Order.id).where(Order.id == order_id)
-    ).scalar_one_or_none()
-    if order_exists is None:
-        raise HTTPException(status_code=404, detail="Order not found")
-
     try:
+        logger.info("Пытаюсь начать транзакцию, order_id: %s", order_id)
         with db.begin():
+
+            order_exists = db.execute(
+                select(Order.id).where(Order.id == order_id)
+            ).scalar_one_or_none()
+            if order_exists is None:
+                raise HTTPException(status_code=404, detail="Order not found")
+
+            logger.info("Начата транзакция")
+
             product: Product | None = db.execute(
                 select(Product)
                 .where(Product.id == payload.product_id)
@@ -102,7 +108,7 @@ def add_item_to_order(
                     index_elements=[OrderItem.order_id, OrderItem.product_id],
                     set_={
                         OrderItem.qty: OrderItem.qty + payload.quantity,
-                        OrderItem.unit_price: OrderItem.unit_price,
+                        OrderItem.unit_price: product.price,
                     },
                 )
                 .returning(OrderItem.qty)
@@ -111,6 +117,7 @@ def add_item_to_order(
             new_qty = db.execute(stmt).scalar_one()
 
             db.flush()
+            logger.info("Успешно выполнено, order_id: %s", order_id)
 
             return AddItemResponse(
                 order_id=order_id,
@@ -119,7 +126,9 @@ def add_item_to_order(
                 remaining_stock=int(product.stock_qty),
             )
 
-    except HTTPException:
+    except HTTPException as e:
+        logger.info(e)
         raise
-    except Exception:
+    except Exception as e:
+        logger.info(e)
         raise HTTPException(status_code=500, detail="Internet server error")
