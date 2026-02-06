@@ -11,6 +11,8 @@ class Sessings(BaseSettings):
     )
     database_url: str = ""
     app_name: str = "My API"
+    version: str = ""
+    api_prefix: str = ""
 
 
 settings = Sessings()

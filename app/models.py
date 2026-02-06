@@ -28,9 +28,11 @@ class Product(Base):
         BigInteger, ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False
     )
     stock_qty: Mapped[int] = mapped_column(Integer, nullable=False)
+    price: Mapped[int] = mapped_column(Numeric(12, 2), nullable=False)
     created_at: Mapped[object] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    __table_args__ = (Index("idx_products_category_id", category_id),)
 
 
 class Customer(Base):
