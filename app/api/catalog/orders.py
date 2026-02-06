@@ -1,15 +1,42 @@
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.schemas import AddItemRequest, AddItemResponse
+from app.api.catalog.schemas import AddItemRequest, AddItemResponse, clientStatistics
 from app.db import get_db
 from app.models import Order, Product, OrderItem
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-router = APIRouter()
+router = APIRouter(prefix="/orders", tags=["Catalog / Orders"])
+
+SQL_CLIENT_STATISTICS = text(
+    """
+select
+	cs.name,
+	sum(oi.unit_price * oi.qty ) as total_amount
+from
+	orders o
+join order_items oi on
+	o.id = oi.order_id
+join customers cs on
+	o.customer_id = cs.id
+group by
+	o.customer_id,
+	cs.name
+order by
+	total_amount desc
+
+"""
+)
 
 
-@router.post("/orders/{order_id}/items", response_model=AddItemResponse)
+@router.get("/clients/statistics", response_model=list[clientStatistics])
+def client_statistics(db: Session = Depends(get_db)):
+    res = db.execute(SQL_CLIENT_STATISTICS)
+    rows = res.mappings().all()
+    return rows
+
+
+@router.post("/{order_id}/items", response_model=AddItemResponse)
 def add_item_to_order(
     order_id: int, payload: AddItemRequest, db: Session = Depends(get_db)
 ):
