@@ -43,6 +43,10 @@ trade-tree/
 │   ├── versions/001_baseline.py   # базовая миграция
 │   ├── versions/002_v_top5_products_last_30_days.py # текст запроса  view "Топ-5 самых покупаемых товаров за последний месяц"
 │   └── README.md                  # Запросы, схема БД
+├── docs/db
+│   ├── upgrade-recommendations.md # Рекомендации по обновлению
+│   ├── schema.sql                 # DDL SQL 
+│   └── explain_analyze.md         # EXPLAIN (ANALYZE, BUFFERS)
 ├── docker-compose.yml             # PostgreSQL
 ├── requirements.txt
 └── README.md
